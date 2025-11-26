@@ -5,6 +5,7 @@ from decouple import config
 from aerialist.px4.aerialist_test import AerialistTest, AgentConfig
 from aerialist.px4.obstacle import Obstacle
 from aerialist.px4.trajectory import Trajectory
+from aerialist.px4.plot import Plot
 
 AGENT = config("AGENT", default=AgentConfig.DOCKER)
 if AGENT == AgentConfig.LOCAL:
@@ -43,7 +44,23 @@ class TestCase(object):
         ]
 
     def plot(self):
-        self.plot_file = AerialistTest.plot(self.test, self.test_results)
+        trajectories = [r.record for r in self.test_results]
+        avg = Trajectory.average([r.record for r in self.test_results])
+        self.plot_file = Plot.plot_trajectory(
+            trajectories,
+            self.goal if hasattr(self, "goal") else None,
+            distance=True,  # let Aerialist compute distance to obstacles
+            obstacles=(
+                self.test.simulation.obstacles
+                if self.test.simulation is not None
+                else None
+            ),
+            file_prefix=f"iter-",
+            ave_trajectory=avg,
+            waypoints=(
+                None if self.test.mission is None else self.test.mission.waypoints
+            ),
+        )
 
     def save_yaml(self, path):
         self.test.to_yaml(path)
