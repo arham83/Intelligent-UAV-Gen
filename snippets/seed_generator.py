@@ -17,10 +17,9 @@ from utils.logger import LoggerManager
 logger = LoggerManager(name='Test Seed Generater',log_dir='logs', level='INFO').get_logger()
 
 class SeedGenerator:
-    def __init__(self, logger, base_yaml_file, output_dir):
+    def __init__(self, logger, output_dir):
         self.output_dir = output_dir
         self.log = logger
-        self.base_yaml = base_yaml_file
         self.gen = Prompter(logger, SYSTEM_PROMPT)
         self.validator = TestValidator(logger)
         os.makedirs(output_dir, exist_ok=True)
@@ -62,11 +61,30 @@ class SeedGenerator:
         """
         return prompt
     
+    
+    def strip_json_fence(self, text: str) -> str:
+        """
+        Remove ```json ... ``` fences from a model reply, compatible with older Python.
+        """
+        text = text.strip()
+
+        if text.startswith("```json"):
+            text = text[len("```json"):]
+        elif text.startswith("```"):
+            text = text[len("```"):]
+
+        if text.endswith("```"):
+            text = text[:-3]
+
+        return text.strip()
+
+
     def generate_seeds(self, base_trajectory_path):
         targ_path = Helper.read_ulg(base_trajectory_path, 20)
         prompt = self.get_prompt(targ_path)
         resp = self.gen.process(prompt)
-        cleaned = resp['reply'].strip().removeprefix("```json").removesuffix("```").strip()
+        # cleaned = resp['reply'].strip().removeprefix("```json").removesuffix("```").strip()
+        cleaned = self.strip_json_fence(resp["reply"])
         data = json.loads(cleaned)
         id =1
         for config in data:
@@ -128,7 +146,8 @@ class SeedGenerator:
                 4. if we got x invalid config, rectify all of them and return same number of configs
             """
             resp = self.gen.process(prompt)
-            cleaned = resp['reply'].strip().removeprefix("```json").removesuffix("```").strip()
+            # cleaned = resp['reply'].strip().removeprefix("```json").removesuffix("```").strip()
+            cleaned = self.strip_json_fence(resp["reply"])
             # Parse JSON into Python objects
             data = json.loads(cleaned)
             for config in data:
@@ -142,7 +161,7 @@ class SeedGenerator:
         for _, row in invalid_seeds.iterrows(): 
             Helper.del_file(row['file_path'])
     
-    def simulate_seed(self):
+    def simulate_seed(self, base_yaml_file):
         yaml_files = list(Path(self.output_dir).rglob("*.yaml"))
         self.log.info(f"Found {len(yaml_files)} YAML files.\n")
         for i, yaml_path in enumerate(yaml_files, start=1):
@@ -151,7 +170,7 @@ class SeedGenerator:
                 base_data = yaml.safe_load(bs)
 
             obstacles = base_data["obstacles"]
-            test = TestCase(AerialistTest.from_yaml(self.case_study), Helper.to_px4_obstacles(obstacles))
+            test = TestCase(AerialistTest.from_yaml(base_yaml_file), Helper.to_px4_obstacles(obstacles))
             test.execute()
             distances = test.get_distances()
             print(f"minimum_distance:{min(distances)}")
@@ -165,8 +184,8 @@ class SeedGenerator:
         return sel_conf['path'].tolist(), len(df_sorted)
     
     def get_seeds(self, base_trajectory_path, base_yaml_file):
-        self.get_valid_seeds(base_trajectory_path, base_yaml_file)
-        self.simulate_seed()
+        self.get_valid_seeds(base_trajectory_path)
+        self.simulate_seed(base_yaml_file)
         return self.get_top_seeds()
         
         
