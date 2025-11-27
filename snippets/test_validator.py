@@ -1,6 +1,6 @@
 import math
-from constraints import RANGES
 from typing import Dict, List, Tuple, Optional
+from constraints import RANGES
 
 class TestValidator:
     def __init__(self, logger):
@@ -27,8 +27,8 @@ class TestValidator:
         """Check simple AABB overlap (axis-aligned bounding boxes)."""
         key_map = {"x": "l", "y": "w", "z": "h"}
 
-        c1 = TestValidator._extract_box(obs1)
-        c2 = TestValidator._extract_box(obs2)
+        c1 = self._extract_box(obs1)
+        c2 = self._extract_box(obs2)
 
         for axis in ["x", "y", "z"]:
             half1 = c1[key_map[axis]] / 2
@@ -42,7 +42,7 @@ class TestValidator:
         n = len(obstacles)
         for i in range(n):
             for j in range(i + 1, n):
-                if TestValidator.is_overlapping(obstacles[i], obstacles[j]):
+                if self.is_overlapping(obstacles[i], obstacles[j]):
                     print(f"Obstacles {i} and {j} overlap.")
                     try:
                         self.log.info(f"Obstacles {i} and {j} overlap.")
@@ -114,20 +114,20 @@ class TestValidator:
             l = float(obs["size"]["l"])
             w = float(obs["size"]["w"])
 
-            left, right, bottom, top = TestValidator.rotated_extents(x,y,l,w,r)
+            left, right, bottom, top = self.rotated_extents(x,y,l,w,r)
 
             # Check all sides are inside bounds
             if x <= 0 and y > 25:
-                if TestValidator.out_of_range(left,x_min,x_max) or TestValidator.out_of_range(top, y_min,y_max):
+                if self.out_of_range(left,x_min,x_max) or self.out_of_range(top, y_min,y_max):
                     return False
             if x <= 0 and y <= 25:
-                if TestValidator.out_of_range(left,x_min,x_max) or TestValidator.out_of_range(bottom, y_min,y_max):
+                if self.out_of_range(left,x_min,x_max) or self.out_of_range(bottom, y_min,y_max):
                     return False
             if x > 0 and y > 25:
-                if  TestValidator.out_of_range(right,x_min,x_max) or TestValidator.out_of_range(top, y_min,y_max):
+                if  self.out_of_range(right,x_min,x_max) or self.out_of_range(top, y_min,y_max):
                     return False
             if x > 0 and y <= 25:
-                if TestValidator.out_of_range(right,x_min,x_max) or TestValidator.out_of_range(bottom, y_min,y_max):
+                if self.out_of_range(right,x_min,x_max) or self.out_of_range(bottom, y_min,y_max):
                     return False
         return True
 
