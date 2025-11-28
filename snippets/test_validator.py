@@ -1,53 +1,55 @@
 import math
 from typing import Dict, List, Tuple, Optional
 from constraints import RANGES
+from shapely.geometry import Polygon
+from shapely.affinity import rotate, translate
 
 class TestValidator:
     def __init__(self, logger):
         self.log = logger
         
-    def _extract_box(self, obs):
-        """Normalize obstacle schema and extract position + size fields."""
+    def _obstacle_to_polygon(self, obs):
+        """
+        Convert obstacle (size + position + rotation) 
+        """
         size = obs.get("size") or obs.get("dimensions")
-        pos = obs.get("position") or obs.get("pose")
-        if size is None or pos is None:
-            self.log.error(f"Invalid obstacle schema: expected keys 'size' or 'dimensions' and 'position'.")
-            raise KeyError(f"Invalid obstacle schema: expected keys 'size' or 'dimensions' and 'position'.")
+        pos  = obs.get("position") or obs.get("pose")
 
-        return {
-            "x": float(pos.get("x", 0.0)),
-            "y": float(pos.get("y", 0.0)),
-            "z": float(pos.get("z", 0.0)),
-            "l": float(size.get("l", 0.0)),
-            "w": float(size.get("w", 0.0)),
-            "h": float(size.get("h", 0.0)),
-        }
+        l = float(size["l"])
+        w = float(size["w"])
+        r = float(pos.get("r", 0))       # rotation in degrees
+        x = float(pos["x"])
+        y = float(pos["y"])
 
-    def is_overlapping(self, obs1, obs2):
-        """Check simple AABB overlap (axis-aligned bounding boxes)."""
-        key_map = {"x": "l", "y": "w", "z": "h"}
+        # Base rectangle centered at (0, 0)
+        rect = Polygon([
+            (-l / 2, -w / 2),
+            ( l / 2, -w / 2),
+            ( l / 2,  w / 2),
+            (-l / 2,  w / 2),
+        ])
 
-        c1 = self._extract_box(obs1)
-        c2 = self._extract_box(obs2)
+        # Rotate around center, then translate
+        rect = rotate(rect, r, use_radians=False)
+        rect = translate(rect, xoff=x, yoff=y)
 
-        for axis in ["x", "y", "z"]:
-            half1 = c1[key_map[axis]] / 2
-            half2 = c2[key_map[axis]] / 2
-            if abs(c1[axis] - c2[axis]) > (half1 + half2):
-                return False  # separated along this axis
-        return True  # overlap in all axes
+        return rect
+
+    def obstacles_overlap(self, obs1, obs2):
+        """Return True if rotated obstacles overlap (interiors intersect)."""
+        p1 = self._obstacle_to_polygon(obs1)
+        p2 = self._obstacle_to_polygon(obs2)
+
+        # intersects() → True even for edges touching
+        # touches()     → True only when boundaries touch but no actual overlap
+        return p1.intersects(p2) and not p1.touches(p2)
 
     def any_overlap(self, obstacles):
-        """Return True if any pair of obstacles overlap."""
+        """Return True if ANY pair of rotated obstacles overlap."""
         n = len(obstacles)
         for i in range(n):
             for j in range(i + 1, n):
-                if self.is_overlapping(obstacles[i], obstacles[j]):
-                    print(f"Obstacles {i} and {j} overlap.")
-                    try:
-                        self.log.info(f"Obstacles {i} and {j} overlap.")
-                    except NameError:
-                        pass  # if log isn't defined
+                if self.obstacles_overlap(obstacles[i], obstacles[j]):
                     return True
         return False
     
