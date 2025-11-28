@@ -1,22 +1,21 @@
 import os
+
+import yaml
 from bot.prompter import Prompter
 from utils.helper import Helper
 from test_validator import TestValidator
-from dotenv import load_dotenv
-from utils.logger import LoggerManager 
 from bot.sys_prompts.mutate_config import SYSTEM_PROMPT
 
-load_dotenv()
 
-class GenerateMuatation:
-    def __init__(self,logger, base_config_path, base_trajectory_path):
+class GenerateMutation:
+    def __init__(self,logger, case_study, soi):
         """
         base_config_file -> will be used to write the base yaml file
         base_trajectory_path - > defines the base trajectory that UAV will follow 
         """
         self.logger = logger
-        self.base_trajectory = Helper.read_ulg(base_trajectory_path, 20)
-        self.base_config_path = base_config_path 
+        self.soi = soi
+        self.case_study = case_study 
         self.gen = Prompter(logger=logger, system_prompt=SYSTEM_PROMPT)
 
     def get_prompt(self, flight_trajectory, previous_obstacle_config):
@@ -31,11 +30,11 @@ class GenerateMuatation:
             4. Make DIVERSIFIED test cases, each test case should be different from the previous one.
         """
         prompt = f"""
-        See below I will provide you the base trajectory path (SOI) and the path UAV will follow to complete 
+        See below I will provide you Segment of Interest, the path UAV will follow to complete 
         his flight given that there are no obstacles.
         
-        *** Base Trajectory Path ***
-        {self.base_trajectory}
+        *** Segment of Interest (SOI) ***
+        {self.soi}
         
         Once obstacles are provided, it will try to avoid the obstacle and still try to follow the same 
         path with sight modification to make sure it should not hit the obstacles.
@@ -67,12 +66,12 @@ class GenerateMuatation:
     def generate_mutated_obstacles_config(self, flight_trajectory_path, previous_obstacle_config, test_dir, iter):
         
         # import previous flight trajectory for reference
-        flight_trajectory = Helper.read_ulg(flight_trajectory_path, 20)
+        flight_trajectory = Helper.read_ulg(flight_trajectory_path, 30)
         # Load Yaml to get previous obstacle configuration
         obstacles = Helper.load_config(previous_obstacle_config)
         # Generate mutated obstacle configuration
         prompt = self.get_prompt(str(flight_trajectory), obstacles)
-        first_trial, record = Helper.best_worse_fitness(f"results/results.csv")
+        first_trial, record = Helper.best_worse_fitness(f"results.csv")
         
         if first_trial:
             print("First Trial - No previous fitness record.")
@@ -149,16 +148,9 @@ class GenerateMuatation:
             wr_loop += 1
             print("Sanity Check - Within Parameter Ranges:", within_range)
         
-        Helper.write_yaml(self.base_config_path, parsed_data, f"gen_config/mission_iter{iter}.yaml")
+        with open(f"gen_config/mission_iter{iter}.yaml", "w", encoding="utf-8") as f:
+            yaml.safe_dump(parsed_data, f, sort_keys=False, allow_unicode=True)
+        
         return f"gen_config/mission_iter{iter}.yaml"
         
-
-# if __name__ == "__main__":
-#     gen_mutation = GenerateMuatation("case_studies/mission2.yaml", "case_studies/mission2.ulg")
-#     gen_mutation.generate_mutated_obstacles_config(
-#         "test/iter0-10-11-21-59-35_55191dca5029.ulg",
-#         "case_studies/mission2.yaml",
-#         set()
-#     )
-    
     
