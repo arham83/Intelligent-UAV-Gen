@@ -5,7 +5,7 @@ import shutil
 import csv
 import pyulog
 import shutil
-import random
+from pyulog import ULog
 from pathlib import Path
 import json
 import hashlib
@@ -60,7 +60,7 @@ class Helper:
         with open(config_path, 'r', encoding='utf-8') as yf:
             data = yaml.safe_load(yf)
 
-        return str(data["simulation"]["obstacles"])
+        return str(data["obstacles"])
     
     @staticmethod
     def parse_response(raw_text: str) -> str:
@@ -209,6 +209,17 @@ class Helper:
 
         return content
     
+    @staticmethod
+    def get_flight_time(ulg_path):
+        ulog = ULog(ulg_path)
+
+        # ULog timestamps are in microseconds
+        start_us = ulog.start_timestamp
+        end_us = ulog.last_timestamp
+
+        duration_s = (end_us - start_us) / 1e6  # convert to seconds
+        return duration_s
+
     @staticmethod
     def get_trajectory_file_path(results_dir: Path, run_id: str) -> Path:
         ulg_files = sorted(results_dir.rglob(f"*iter{run_id}*.ulg"), key=os.path.getmtime)
