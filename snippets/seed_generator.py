@@ -17,21 +17,23 @@ from utils.logger import LoggerManager
 logger = LoggerManager(name='Test Seed Generater',log_dir='logs', level='INFO').get_logger()
 
 class SeedGenerator:
-    def __init__(self, logger, output_dir):
+    def __init__(self, logger, soi, output_dir):
         self.output_dir = output_dir
         self.log = logger
         self.gen = Prompter(logger, SYSTEM_PROMPT)
         self.validator = TestValidator(logger)
+        self.seeds_track = 0
+        self.soi = soi
         os.makedirs(output_dir, exist_ok=True)
-        self.col = ["path", "distance", "obs1-size", "obs1-position", "obs2-size", "obs2-position"]
+        self.col = ["yaml_path", "ulg_path", "distance", "time", "obs1-size", "obs1-position", "obs2-size", "obs2-position"]
   
-    def get_prompt(self, base_trajectory):
+    def get_prompt(self):
         prompt = f"""
-        See below I will provide you the base trajectory path, path UAV will follow to complete 
+        See below I will provide you the Segment of Interest, path UAV will follow to complete 
         his flight given that there are no obstacles.
         
-        *** Base Trajectory Path ***
-        {base_trajectory}
+        *** Segment of Interest (SOI) ***
+        {self.soi}
         
         Once obstacles are provided, it will try to avoid the obstacle and still try to follow the same 
         path with sight modification to make sure it should not hit the obstacles.
@@ -40,7 +42,7 @@ class SeedGenerator:
         
         Goal:
             1. You are supposed to generate 10 very diversified config. Should differ from each other 
-            significantly and must be placed in the base trajectory path.
+            significantly and must be placed in the way of Segment of Interest.
             2. No Overlapping of obstacles in each test case.
             3. Don't place obstacles directly on the top of the other obstacle in a line.
             4. Obstacle should not placed directly at the starting point of SOI, we want to give room to
@@ -57,10 +59,9 @@ class SeedGenerator:
             obstacles
             3. Again make sure no over lapping of the obstacles in generated test cases.
             4. Don't go for the min length for obstacles while generating the test cases. 
-            5. Make sure a part of the obstacle should always be on SOI.
+            5. Make sure at least one of the obstacle should always be on SOI.
         """
         return prompt
-    
     
     def strip_json_fence(self, text: str) -> str:
         """
@@ -78,12 +79,10 @@ class SeedGenerator:
 
         return text.strip()
 
-
-    def generate_seeds(self, base_trajectory_path):
-        targ_path = Helper.read_ulg(base_trajectory_path, 20)
-        prompt = self.get_prompt(targ_path)
+    def generate_seeds(self):
+        self.log.info("generating base seeds..")
+        prompt = self.get_prompt()
         resp = self.gen.process(prompt)
-        # cleaned = resp['reply'].strip().removeprefix("```json").removesuffix("```").strip()
         cleaned = self.strip_json_fence(resp["reply"])
         data = json.loads(cleaned)
         id =1
@@ -121,16 +120,15 @@ class SeedGenerator:
 
         self.log.info(f"Valid Configurations: {len(df_valid)}")
         self.log.info(f"Invalid Configurations:{ len(df_invalid)}")
-
+        self.seeds_track = len(yaml_files)
         return df_valid, df_invalid
 
-    def get_valid_seeds(self, base_trajectory_path):
-        self.generate_seeds(base_trajectory_path)
+    def get_valid_seeds(self):
+        self.generate_seeds()
         valid_seeds, invalid_seeds = self.verify_seed()
-        id = 11
         while (len(valid_seeds) < 10):
             names = invalid_seeds["file_path"].tolist()
-            print(f"invalid files = {len(names)}")
+            self.log.info(f"invalid files = {len(names)}")
             invalid_seeds.drop(columns=["file_path"], inplace=True)
             prompt = f"""
             We got 10 configs and out of the 10 config, {len(valid_seeds)} configs are valid and 
@@ -146,17 +144,16 @@ class SeedGenerator:
                 4. if we got x invalid config, rectify all of them and return same number of configs
             """
             resp = self.gen.process(prompt)
-            # cleaned = resp['reply'].strip().removeprefix("```json").removesuffix("```").strip()
             cleaned = self.strip_json_fence(resp["reply"])
             # Parse JSON into Python objects
             data = json.loads(cleaned)
             for config in data:
-                with open(f"{self.output_dir}/base_config_{id}.yaml", "w", encoding="utf-8") as f:
+                with open(f"{self.output_dir}/base_config_{self.seeds_track + 1}.yaml", "w", encoding="utf-8") as f:
                     yaml.safe_dump(config, f, sort_keys=False, allow_unicode=True)
-                id +=1
+                self.seeds_track +=1
             valid_seeds, invalid_seeds = self.verify_seed()
         
-        print("got 10 valid seeds")
+        self.log.info("got 10 valid seeds.. lets go")
         valid_seeds, invalid_seeds = self.verify_seed()
         for _, row in invalid_seeds.iterrows(): 
             Helper.del_file(row['file_path'])
@@ -171,20 +168,23 @@ class SeedGenerator:
 
             obstacles = base_data["obstacles"]
             test = TestCase(AerialistTest.from_yaml(base_yaml_file), Helper.to_px4_obstacles(obstacles))
-            test.execute()
+            _, ulg_path = test.execute()
+            self.log.info(f"Seed's ({yaml_path:}) flight logs stored at following path: {ulg_path}")
             distances = test.get_distances()
             print(f"minimum_distance:{min(distances)}")
-            test.plot()
-            Helper.write_csv(self.col, [yaml_path, min(distances) ,obstacles[0]["size"], obstacles[0]['position'], obstacles[1]['size'], obstacles[1]['position']],f"{self.output_dir}/results.csv")
+            img_path = test.plot()
+            self.log.info(f"Seed's ({yaml_path:}) image stored at following path: {img_path}")
+
+            Helper.write_csv(self.col, [yaml_path, ulg_path, min(distances), Helper.get_flight_time(ulg_path) ,obstacles[0]["size"], obstacles[0]['position'], obstacles[1]['size'], obstacles[1]['position']],f"{self.output_dir}/seeds_info.csv")
     
     def get_top_seeds(self, top=5):
-        df = pd.read_csv(f"{self.output_dir}/results.csv")
+        df = pd.read_csv(f"{self.output_dir}/seeds_info.csv")
         df_sorted = df.sort_values(by='distance', ascending=True)
         sel_conf = df_sorted.head(top)
-        return sel_conf['path'].tolist(), len(df_sorted)
+        return sel_conf['yaml_path'].tolist(), sel_conf, len(df_sorted)
     
-    def get_seeds(self, base_trajectory_path, base_yaml_file):
-        self.get_valid_seeds(base_trajectory_path)
+    def get_seeds(self, base_yaml_file):
+        self.get_valid_seeds()
         self.simulate_seed(base_yaml_file)
         return self.get_top_seeds()
         
@@ -197,7 +197,7 @@ def main():
         "--trajectory",
         "-t",
         type=Path,
-        default=Path("case_studies/mission2.ulg"),
+        default=Path("soi/soi_1.ulg"),
         help="Path to the base trajectory file (.ulg).",
     )
     parser.add_argument(
@@ -216,8 +216,9 @@ def main():
     if not args.yaml.exists():
         parser.error(f"YAML not found: {args.yaml}")
 
-    gen = SeedGenerator(logger, "Sample")
-    gen.get_seeds(str(args.trajectory), str(args.yaml))
+    gen = SeedGenerator(logger, str(args.trajectory),"seeds")
+    # gen.get_seeds(str(args.yaml))
+    gen.generate_seeds()
 
 if __name__ == "__main__":
     main()
