@@ -1,0 +1,112 @@
+import os
+import yaml
+from pathlib import Path
+from aerialist.px4.aerialist_test import AerialistTest
+from testcase import TestCase
+from seed_generator import SeedGenerator
+from gen_mutation import GenerateMutation
+from utils.helper import Helper
+
+
+class IntelliGen():
+    def __init__(self, logger, case_study, budget):
+        self.log = logger
+        self.budget = budget
+        os.makedirs("soi", exist_ok=True) 
+        os.makedirs("temp", exist_ok=True)
+        os.makedirs("gen_config", exist_ok=True)
+        self.case_study = case_study
+        self.soi = self.init_soi()
+        self.seed_gen = SeedGenerator(logger, self.soi, "seeds")
+        self.mutator = GenerateMutation(logger, case_study, self.soi)
+        
+    
+    def init_soi(self):
+        """
+        Will init the SOI path of the flight
+        """
+        test = TestCase(
+            AerialistTest.from_yaml(self.case_study),
+            Helper.to_px4_obstacles([])  # will be empty
+        )
+        _ , path = test.execute()
+        self.log.info(f"SOI_path:{path}")
+        Helper.copy_file(path, "soi", "soi")
+        img_path = test.plot()
+        self.log.info(f"SOI image stored at following path: {img_path}")
+        soi = Helper.read_ulg("soi/soi.ulg", 30)
+        self.log.info(f"co-ordinates of the SOI: {img_path}")
+        return soi
+    
+    def get_Seeds(self, case_study):
+        self.log.info("Generating Seeds...")
+        self.seed_gen.get_seeds(case_study)
+
+    
+    def run(self):
+        count = 0
+        iteration = 0
+        seed_iter = 0
+        test_dir = set()
+        col = ["Iteration", "distance", "time", "obs1-size", "obs1-position", "obs2-size", "obs2-position"]
+
+        # Generate the seeds
+        self.get_Seeds(self.case_study)
+        seeds_yaml, seeds_df, uti_budget = gen.get_top_seeds(5)
+        
+        # Lets run Simulation
+        while (iteration <= (self.budget -uti_budget)):
+            sel_yaml = seeds_yaml[seed_iter]
+            print(f"Selected Seed: {sel_yaml}")
+            self.log.info(f"Selected Seed: {sel_yaml}")
+            row = seeds_df[seeds_df["yaml_path"].str.strip() == sel_yaml]
+            Helper.copy_file(row["yaml_path"], "temp", "mission")
+            Helper.copy_file(row["ulg_path"], "temp", "trajectory")
+            Helper.write_csv(col, [count, row["distance"], row["time"], row["obs1-size"], row["obs1-position"], row["obs2-size"], row["obs2-position"]],f"results.csv")
+            count +=1
+            for i in range(7):
+                test_path = self.mutator.generate_mutated_obstacles_config(
+                    "temp/trajectory.ulg",
+                    "temp/mission.yaml",
+                    test_dir,
+                    iter=count,
+                )
+                Helper.copy_file(test_path, "temp", "mission") 
+                with open(test_path, 'r', encoding='utf-8') as bs:
+                    base_data = yaml.safe_load(bs)
+                obstacles = base_data["obstacles"]
+                test = TestCase(AerialistTest.from_yaml(self.case_study), Helper.to_px4_obstacles(obstacles))
+                _, ulg_path = test.execute()
+                Helper.copy_file(ulg_path, "temp", "trajectory")
+                distances = test.get_distances()
+                img_path = test.plot()
+                self.log.info(f"Trajectory of Mutated Config stored at following path: {img_path}")
+                val = Helper.get_config_info(test_path)
+                Helper.write_csv(col, [count, min(distances), val['obs1_size'], val['obs1_position'],val['obs2_size'], val['obs2_position']],f"results/results.csv")
+                count +=1
+                if min(distances) > 1.5:
+                    break
+            
+            seed_iter +=1
+            if seed_iter == 5:
+                seed_iter = 0
+
+
+
+
+                
+                
+                
+
+            
+        
+        
+        
+
+        
+
+
+
+
+if __name__ == "__main__":
+    gen = IntelliGen("case_studies/mission2.yaml")
