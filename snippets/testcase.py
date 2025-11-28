@@ -35,7 +35,7 @@ class TestCase(object):
         logger.info("test finished...")
         self.trajectory = self.test_results[0].record
         self.log_file = self.test_results[0].log_file
-        return self.trajectory
+        return self.trajectory, self.log_file
 
     def get_distances(self) -> List[float]:
         return [
@@ -61,6 +61,7 @@ class TestCase(object):
                 None if self.test.mission is None else self.test.mission.waypoints
             ),
         )
+        return self.plot_file 
 
     def save_yaml(self, path):
         self.test.to_yaml(path)
