@@ -48,3 +48,6 @@ pydevd*.log
 nodeLanguageServer/**
 nodeLanguageServer.*/**
 .idea/
+snippets/soi/
+snippets/seeds/
+snippets/results/
