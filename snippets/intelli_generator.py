@@ -44,7 +44,6 @@ class IntelliGen():
 
     
     def run(self):
-        count = 0
         iteration = 0
         seed_iter = 0
         test_dir = set()
@@ -52,7 +51,7 @@ class IntelliGen():
 
         # Generate the seeds
         self.get_Seeds(self.case_study)
-        seeds_yaml, seeds_df, uti_budget = gen.get_top_seeds(5)
+        seeds_yaml, seeds_df, uti_budget = self.seed_gen.get_top_seeds(5)
         
         # Lets run Simulation
         while (iteration <= (self.budget -uti_budget)):
@@ -60,10 +59,10 @@ class IntelliGen():
             print(f"Selected Seed: {sel_yaml}")
             self.log.info(f"Selected Seed: {sel_yaml}")
             row = seeds_df[seeds_df["yaml_path"].str.strip() == sel_yaml]
-            Helper.copy_file(row["yaml_path"], "temp", "mission")
-            Helper.copy_file(row["ulg_path"], "temp", "trajectory")
-            Helper.write_csv(col, [count, row["distance"], row["time"], row["obs1-size"], row["obs1-position"], row["obs2-size"], row["obs2-position"]],f"results.csv")
-            count +=1
+            Helper.copy_file(row["yaml_path"].iloc[0], "temp", "mission")
+            Helper.copy_file(row["ulg_path"].iloc[0], "temp", "trajectory")
+            Helper.write_csv(col, [iteration, row["distance"].iloc[0], row["time"].iloc[0], row["obs1-size"].iloc[0], row["obs1-position"].iloc[0], row["obs2-size"].iloc[0], row["obs2-position"].iloc[0]],f"results.csv")
+            iteration +=1
             for i in range(7):
                 test_path = self.mutator.generate_mutated_obstacles_config(
                     "temp/trajectory.ulg",
@@ -82,8 +81,8 @@ class IntelliGen():
                 img_path = test.plot()
                 self.log.info(f"Trajectory of Mutated Config stored at following path: {img_path}")
                 val = Helper.get_config_info(test_path)
-                Helper.write_csv(col, [count, min(distances), val['obs1_size'], val['obs1_position'],val['obs2_size'], val['obs2_position']],f"results/results.csv")
-                count +=1
+                Helper.write_csv(col, [iteration, min(distances), Helper.get_flight_time(ulg_path), val['obs1_size'], val['obs1_position'],val['obs2_size'], val['obs2_position']],f"results.csv")
+                iteration +=1
                 if min(distances) > 1.5:
                     break
             
@@ -91,22 +90,9 @@ class IntelliGen():
             if seed_iter == 5:
                 seed_iter = 0
 
-
-
-
-                
-                
-                
-
-            
-        
-        
-        
-
-        
-
-
-
+from utils.logger import LoggerManager
+logger = LoggerManager(name='UAV Generator',log_dir='logs', level='INFO').get_logger()
 
 if __name__ == "__main__":
-    gen = IntelliGen("case_studies/mission2.yaml")
+    gen = IntelliGen(logger, "case_studies/mission2.yaml", 65)
+    gen.run()
