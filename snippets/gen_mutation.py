@@ -17,6 +17,7 @@ class GenerateMutation:
         self.soi = soi
         self.case_study = case_study 
         self.gen = Prompter(logger=logger, system_prompt=SYSTEM_PROMPT)
+        self.val = TestValidator(logger)
 
     def get_prompt(self, flight_trajectory, previous_obstacle_config):
         """
@@ -85,9 +86,9 @@ class GenerateMutation:
         parsed_data = Helper.parse_response(resp['reply'])
         
         # Sanity Checks
-        overlapped = TestValidator.any_overlap(parsed_data['obstacles'])
-        min_height_check = TestValidator.check_based_and_min_height(parsed_data['obstacles'])
-        within_range = TestValidator.check_obstacle_parameter_ranges(parsed_data['obstacles'])
+        overlapped = self.val.any_overlap(parsed_data['obstacles'])
+        min_height_check = self.val.check_based_and_min_height(parsed_data['obstacles'])
+        within_range = self.val.check_obstacle_parameter_ranges(parsed_data['obstacles'])
         test = Helper.get_hash(parsed_data)
         
         while True:
@@ -113,7 +114,7 @@ class GenerateMutation:
             self.logger.info(f"New Prompt to avoid overlappig: {new_prompt}")
             resp = self.gen.process(new_prompt)
             parsed_data = Helper.parse_response(resp['reply'])
-            overlapped = TestValidator.any_overlap(parsed_data['obstacles'])
+            overlapped = self.val.any_overlap(parsed_data['obstacles'])
             ol_loop += 1
             print("Sanity Check - Any Overlap:", overlapped)
             
@@ -129,7 +130,7 @@ class GenerateMutation:
             self.logger.info(f"New Prompt to obtain minimum height: {new_prompt}")
             resp = self.gen.process(new_prompt)
             parsed_data = Helper.parse_response(resp['reply'])
-            min_height_check = TestValidator.test_based_and_min_height(parsed_data['obstacles'])
+            min_height_check = self.val.test_based_and_min_height(parsed_data['obstacles'])
             mh_loop += 1
             print("Sanity Check - Min Height Valid:", min_height_check)
         
@@ -144,7 +145,7 @@ class GenerateMutation:
             self.logger.info(f"New Prompt to make sure we are within containts: {new_prompt}")
             resp = self.gen.process(new_prompt)
             parsed_data = Helper.parse_response(resp['reply'])
-            within_range = TestValidator.check_obstacle_parameter_ranges(parsed_data['obstacles'])
+            within_range = self.val.check_obstacle_parameter_ranges(parsed_data['obstacles'])
             wr_loop += 1
             print("Sanity Check - Within Parameter Ranges:", within_range)
         
