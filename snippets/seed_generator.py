@@ -168,7 +168,8 @@ class SeedGenerator:
             print(f"minimum_distance:{min(distances)}")
             img_path = test.plot()
             self.log.info(f"Seed's ({yaml_path:}) image stored at following path: {img_path}")
-            test_cases.append(test)
+            if min(distances) < 1.5:
+                test_cases.append(test)
             Helper.write_csv(self.col, [yaml_path, ulg_path, min(distances), Helper.get_flight_time(ulg_path) ,obstacles[0]["size"], obstacles[0]['position'], obstacles[1]['size'], obstacles[1]['position']],f"{self.output_dir}/seeds_info.csv")
     
     def get_top_seeds(self, threshold=1.55):

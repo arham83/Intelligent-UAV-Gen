@@ -79,7 +79,8 @@ class IntelliGen():
                 img_path = test.plot()
                 self.log.info(f"Trajectory of Mutated Config stored at following path: {img_path}")
                 val = Helper.get_config_info(test_path)
-                test_cases.append(test)
+                if min(distances):
+                    test_cases.append(test)
                 Helper.write_csv(col, [iteration, min(distances), Helper.get_flight_time(ulg_path), val['obs1_size'], val['obs1_position'],val['obs2_size'], val['obs2_position']],f"results.csv")
                 iteration +=1
                 if min(distances) > 1.5:
