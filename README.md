@@ -24,6 +24,7 @@ By combining automated seed generation with intelligent seed selection, Intellig
     ```
 
 4. Setting .env file:
+    rename the sample_env with .env and app api_key 
 	```bash
     cd ..
 	vim .env

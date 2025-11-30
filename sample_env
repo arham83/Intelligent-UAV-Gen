@@ -1,0 +1,39 @@
+#### setup configurations ####
+## set according to the machine configurations
+# the root folder for PX4-Autopilot
+# Full address, do not use '~/'
+PX4_HOME=/src/PX4-Autopilot/
+CATKIN_HOME=/src/catkin_ws/
+# run >> roslaunch-logs to find out the correct address
+ROS_HOME=/root/.ros/
+# where to copy the generated logs to (will not copy if not present)
+LOGS_COPY_DIR=results/
+# A folder to save the experiment results
+RESULTS_DIR=results/
+
+# test environment defaults, you probably do not need to change them
+SIMULATOR=ros
+SPEED=1
+ROBOT=px4_ros
+HEADLESS=True
+AVOIDANCE_WORLD=collision_prevention
+AVOIDANCE_WORLD_PATH=/src/aerialist/aerialist/resources/simulation/collision_prevention.world
+AVOIDANCE_LAUNCH=/src/aerialist/aerialist/resources/simulation/collision_prevention.launch
+# PARAMS=venv/lib/python3.8/site-packages/aerialist/resources/simulation/params_avoidance.csv
+
+# Positioning system
+USE_GPS=False
+PLOT_TESTS_XYZ=False
+# DISTANCE_METHOD=frechet
+# DISTANCE_METHOD=dtw-t
+# DISTANCE_METHOD=dtw-tweaked
+# DISTANCE_METHOD=dtw
+
+# k8s
+ROS_KUBE_TEMPLATE=/src/aerialist/aerialist/resources/k8s/k8s-job-avoidance.yaml
+KUBE_TEMPLATE=/src/aerialist/aerialist/resources/k8s/k8s-job.yaml
+
+
+# OPENAI
+OPENAI_API_KEY=
+MODEL_NAME=gpt-4o-mini
