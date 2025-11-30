@@ -7,6 +7,7 @@ import shutil
 import sys
 from decouple import config
 from random_generator import RandomGenerator
+from intelli_generator import IntelliGen
 
 TESTS_FOLDER = config("TESTS_FOLDER", default="./generated_tests/")
 logger = logging.getLogger(__name__)
@@ -58,12 +59,12 @@ if __name__ == "__main__":
     config_loggers()
     try:
         args = arg_parse()
-        generator = RandomGenerator(case_study_file=args.test)
-        test_cases = generator.generate(args.budget)
+        gen = IntelliGen(logger, args.test)
+        test_cases = gen.run(args.budget)
 
-        ### copying the test cases to the output folder
+        ## copying the test cases to the output folder
         tests_fld = f'{TESTS_FOLDER}{datetime.now().strftime("%d-%m-%H-%M-%S")}/'
-        os.mkdir(tests_fld)
+        os.makedirs(tests_fld, exist_ok=True)
         for i in range(len(test_cases)):
             test_cases[i].save_yaml(f"{tests_fld}/test_{i}.yaml")
             shutil.copy2(test_cases[i].log_file, f"{tests_fld}/test_{i}.ulg")
