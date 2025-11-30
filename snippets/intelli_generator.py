@@ -1,4 +1,5 @@
 import os
+import shutil
 import yaml
 from pathlib import Path
 from aerialist.px4.aerialist_test import AerialistTest
@@ -7,7 +8,11 @@ from seed_generator import SeedGenerator
 from gen_mutation import GenerateMutation
 from utils.helper import Helper
 
-
+if os.path.exists("temp") and os.path.isdir("temp"):
+    shutil.rmtree("temp")
+if os.path.exists("seeds") and os.path.isdir("seeds"):
+    shutil.rmtree("seeds")  
+    
 class IntelliGen():
     def __init__(self, logger, case_study):
         self.log = logger
