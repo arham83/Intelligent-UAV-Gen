@@ -152,7 +152,7 @@ class SeedGenerator:
         for _, row in invalid_seeds.iterrows(): 
             Helper.del_file(row['file_path'])
     
-    def simulate_seed(self, base_yaml_file):
+    def simulate_seed(self, base_yaml_file, test_cases):
         yaml_files = list(Path(self.output_dir).rglob("*.yaml"))
         self.log.info(f"Found {len(yaml_files)} YAML files.\n")
         for i, yaml_path in enumerate(yaml_files, start=1):
@@ -168,18 +168,18 @@ class SeedGenerator:
             print(f"minimum_distance:{min(distances)}")
             img_path = test.plot()
             self.log.info(f"Seed's ({yaml_path:}) image stored at following path: {img_path}")
-
+            test_cases.append(test)
             Helper.write_csv(self.col, [yaml_path, ulg_path, min(distances), Helper.get_flight_time(ulg_path) ,obstacles[0]["size"], obstacles[0]['position'], obstacles[1]['size'], obstacles[1]['position']],f"{self.output_dir}/seeds_info.csv")
     
-    def get_top_seeds(self, top=5):
+    def get_top_seeds(self, threshold=1.55):
         df = pd.read_csv(f"{self.output_dir}/seeds_info.csv")
         df_sorted = df.sort_values(by='distance', ascending=True)
-        sel_conf = df_sorted.head(top)
+        sel_conf = df_sorted[df_sorted["distance"] < threshold]
         return sel_conf['yaml_path'].tolist(), sel_conf, len(df_sorted)
     
-    def get_seeds(self, base_yaml_file):
+    def get_seeds(self, base_yaml_file, test_cases):
         self.get_valid_seeds()
-        self.simulate_seed(base_yaml_file)
+        self.simulate_seed(base_yaml_file, test_cases)
         return self.get_top_seeds()
         
         
