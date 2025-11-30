@@ -264,3 +264,14 @@ class Helper:
         else:
             number = False
         return number, str(dict)
+    
+    @staticmethod
+    def get_x_limit(soi):
+        # Extract all X values using regex
+        xs = re.findall(r"X:\s*([-\d\.eE]+)", soi)
+
+        # Convert to float
+        xs = [float(x) for x in xs]
+
+        # Pick first and last X
+        return xs[0],  xs[-1]

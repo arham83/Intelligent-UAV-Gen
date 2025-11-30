@@ -11,7 +11,7 @@ from testcase import TestCase
 from test_validator import TestValidator
 from aerialist.px4.aerialist_test import AerialistTest
 from bot.prompter import Prompter
-from bot.sys_prompts.gen_seed import SYSTEM_PROMPT
+from bot.sys_prompts.gen_seed import get_system_prompt
 
 from utils.logger import LoggerManager
 logger = LoggerManager(name='Test Seed Generater',log_dir='logs', level='INFO').get_logger()
@@ -20,10 +20,11 @@ class SeedGenerator:
     def __init__(self, logger, soi, output_dir):
         self.output_dir = output_dir
         self.log = logger
-        self.gen = Prompter(logger, SYSTEM_PROMPT)
+        self.soi = soi
+        xl,xh= Helper.get_x_limit(soi)
+        self.gen = Prompter(logger, get_system_prompt(xl,xh))
         self.validator = TestValidator(logger)
         self.seeds_track = 0
-        self.soi = soi
         os.makedirs(output_dir, exist_ok=True)
         self.col = ["yaml_path", "ulg_path", "distance", "time", "obs1-size", "obs1-position", "obs2-size", "obs2-position"]
   
@@ -41,25 +42,18 @@ class SeedGenerator:
         those obstacles. 
         
         Goal:
-            1. You are supposed to generate 10 very diversified config. Should differ from each other 
-            significantly and must be placed in the way of Segment of Interest.
+            1. You are supposed to generate 10 very diversified config. Should differ from each other significantly and must be placed in the way of Segment of Interest.
             2. No Overlapping of obstacles in each test case.
             3. Don't place obstacles directly on the top of the other obstacle in a line.
-            4. Obstacle should not placed directly at the starting point of SOI, we want to give room to
-            UAV to atleast fly.
-            5. Try to make sure each part either each obstacle is on SOI or try to place obstacle in such a 
-            way that it will force the trajectory to follow the S shaped flight.
-            
+            4. Obstacle should not placed directly at the starting point of SOI, we want to give room to UAV to atleast fly.
             
         Couple of good suggestion:
-            1. Try to make sure on of the obstacle has width of one obstacle is 2m and has max length within
-            the constraints and thats 20m and this one should placed close to the starting point of flight 
-            to add diversity switch the positions too like moving left or right on SOI 
-            2. Try to arrange obstacles in such a way that, it will force UAV to follow s shape path between 
-            obstacles
-            3. Again make sure no over lapping of the obstacles in generated test cases.
-            4. Don't go for the min length for obstacles while generating the test cases. 
-            5. Make sure at least one of the obstacle should always be on SOI.
+            1. Make sure one of the obstacle is on SOI or try to place obstacles in such a way that it will force the trajectory to follow the S shaped flight.
+            2. ***Make sure one of the obstacle has width of 2m and has max length within the constraints and thats 20m and this one should placed close to the starting point of flight (y = 12)***
+            3. To add diversity switch the positions too like moving left or right on SOI 
+            4. Don't choose min length for obstacles while generating the test cases. 
+            5. place obstacle at horizontally and vertial distance between each obstacle is 15m.
+            6. Each obstacle should be completely or partially placed on SOI path.
         """
         return prompt
     
@@ -215,10 +209,10 @@ def main():
         parser.error(f"Trajectory not found: {args.trajectory}")
     if not args.yaml.exists():
         parser.error(f"YAML not found: {args.yaml}")
-
-    gen = SeedGenerator(logger, str(args.trajectory),"seeds")
-    # gen.get_seeds(str(args.yaml))
-    gen.generate_seeds()
+    soi = Helper.read_ulg(str(args.trajectory),30)
+    gen = SeedGenerator(logger, soi,"seeds")
+    gen.get_seeds(str(args.yaml))
+    # gen.generate_seeds()
 
 if __name__ == "__main__":
     main()
