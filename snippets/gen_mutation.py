@@ -130,7 +130,7 @@ class GenerateMutation:
             self.logger.info(f"New Prompt to obtain minimum height: {new_prompt}")
             resp = self.gen.process(new_prompt)
             parsed_data = Helper.parse_response(resp['reply'])
-            min_height_check = self.val.test_based_and_min_height(parsed_data['obstacles'])
+            min_height_check = self.val.check_based_and_min_height(parsed_data['obstacles'])
             mh_loop += 1
             print("Sanity Check - Min Height Valid:", min_height_check)
         

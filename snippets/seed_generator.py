@@ -52,7 +52,7 @@ class SeedGenerator:
             2. ***Make sure one of the obstacle has width of 2m and has max length within the constraints and thats 20m and this one should placed close to the starting point of flight (y = 12)***
             3. To add diversity switch the positions too like moving left or right on SOI 
             4. Don't choose min length for obstacles while generating the test cases. 
-            5. place obstacle at horizontally and vertial distance between each obstacle is 15m.
+            5. Place obstacle at horizontally and vertial distance between each obstacle is 20m.
             6. Each obstacle should be completely or partially placed on SOI path.
         """
         return prompt
@@ -212,8 +212,8 @@ def main():
         parser.error(f"YAML not found: {args.yaml}")
     soi = Helper.read_ulg(str(args.trajectory),30)
     gen = SeedGenerator(logger, soi,"seeds")
-    gen.get_seeds(str(args.yaml))
-    # gen.generate_seeds()
+    # gen.get_seeds(str(args.yaml))
+    gen.generate_seeds()
 
 if __name__ == "__main__":
     main()

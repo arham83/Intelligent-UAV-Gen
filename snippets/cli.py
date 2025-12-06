@@ -6,7 +6,6 @@ import os
 import shutil
 import sys
 from decouple import config
-from random_generator import RandomGenerator
 from intelli_generator import IntelliGen
 
 TESTS_FOLDER = config("TESTS_FOLDER", default="./generated_tests/")

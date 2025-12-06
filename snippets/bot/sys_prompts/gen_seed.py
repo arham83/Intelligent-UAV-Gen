@@ -18,7 +18,7 @@ def get_system_prompt(x_low, x_high):
             Test cases that block all paths without creating an actual collision are invalid.
           4. The **vertical gap** between two obstacles should be **15m**.
           5. Valid parameter ranges:  ***Stick within these ranges***
-              x ∈ ["""+ str(x_low-20) +","+ str(x_high+20) + """]
+              x ∈ ["""+ str(x_low-30) +","+ str(x_high+30) + """]
               y ∈ [10, 40]
               z = 0
               l ∈ [2, 20]
